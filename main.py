@@ -42,14 +42,12 @@
 #     tts.save(audio_path)
 
 #     return FileResponse(audio_path, media_type="audio/mpeg", filename="output.mp3")
-
 from fastapi import FastAPI, UploadFile, Form, Header, HTTPException
 from fastapi.responses import FileResponse
 from gtts import gTTS
 from googletrans import Translator
 import tempfile
 import os
-import wave
 import subprocess
 import speech_recognition as sr
 from dotenv import load_dotenv
@@ -85,10 +83,12 @@ async def transcribe_audio(
 
         # Step 2: Convert the video file to a WAV audio file using ffmpeg
         wav_path = video_path.replace(".mp4", ".wav")
-        subprocess.run([
-            "ffmpeg", "-y", "-i", video_path,
-            "-ar", "16000", "-ac", "1", "-f", "wav", wav_path
-        ], check=True)
+        result = subprocess.run(
+            ["ffmpeg", "-y", "-i", video_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"FFmpeg error: {result.stderr.decode()}")
 
         # Step 3: Initialize the speech recognizer and recognize speech from the WAV file
         recognizer = sr.Recognizer()
@@ -103,34 +103,44 @@ async def transcribe_audio(
         except sr.RequestError:
             raise HTTPException(status_code=500, detail="Sphinx recognition service failed.")
 
-        # Step 5: Translate the transcript to the desired language
+        # Step 5: Validate if the target language is supported by gTTS
+        supported_languages = gTTS.langs()
+        if language not in supported_languages:
+            raise HTTPException(status_code=400, detail=f"Language '{language}' is not supported by gTTS.")
+
+        # Step 6: Translate the transcript to the desired language
         translator = Translator()
         translated_text = translator.translate(transcript, dest=language).text
 
-        # Step 6: Convert translated text to speech using gTTS
+        # Step 7: Convert translated text to speech using gTTS
         audio_path = wav_path.replace(".wav", f"_{language}.mp3")
         tts = gTTS(translated_text, lang=language)
         tts.save(audio_path)
 
-        # Step 7: Burn the translated audio into the video using ffmpeg
+        # Step 8: Burn the translated audio into the video using ffmpeg
         final_video_path = video_path.replace(".mp4", f"_translated_{language}.mp4")
-        subprocess.run([
-            "ffmpeg", "-y", "-i", video_path, "-i", audio_path,
-            "-c:v", "copy", "-c:a", "aac", "-strict", "experimental", final_video_path
-        ], check=True)
+        result = subprocess.run(
+            ["ffmpeg", "-y", "-i", video_path, "-i", audio_path, "-c:v", "copy", "-c:a", "aac", "-strict", "experimental", final_video_path],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"FFmpeg error: {result.stderr.decode()}")
 
-        # Step 8: Return the video with burned-in translated audio
+        # Step 9: Return the video with burned-in translated audio
         return FileResponse(final_video_path, media_type="video/mp4", filename="translated_video.mp4")
 
     except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"ffmpeg error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"FFmpeg error: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         # Clean up the temporary files
         for path in [video_path, wav_path, audio_path, final_video_path]:
-            if path and os.path.exists(path):
-                os.remove(path)
+            try:
+                if path and os.path.exists(path):
+                    os.remove(path)
+            except Exception as cleanup_error:
+                print(f"Error cleaning up file {path}: {cleanup_error}")
 
 # Run locally or on Render
 if __name__ == "__main__":
