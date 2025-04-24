@@ -5,3 +5,4 @@ googletrans
 speechrecognition 
 pydub 
 python-dotenv
+python-multipart
