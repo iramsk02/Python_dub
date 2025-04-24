@@ -13,6 +13,10 @@ load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
 
+@app.get("/")
+def root():
+    return {"message": "FastAPI with Vosk is running!"}
+
 @app.post("/transcribe")
 async def transcribe_audio(
     file: UploadFile,
