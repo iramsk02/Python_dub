@@ -6,3 +6,5 @@ speechrecognition
 pydub 
 python-dotenv
 python-multipart
+aiohttp
+
