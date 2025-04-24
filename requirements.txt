@@ -1,10 +1,13 @@
-fastapi 
-uvicorn 
-gtts 
 googletrans 
 speechrecognition 
 pydub 
-python-dotenv
 python-multipart
 aiohttp
+fastapi
+uvicorn
+gtts
+python-dotenv
+aiohttp
+cloudinary
+ffmpeg-python
 
