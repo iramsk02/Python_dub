@@ -435,7 +435,7 @@ def root():
 async def transcribe_audio(
     file: Optional[UploadFile] = None,
     video_url: Optional[str] = Form(None),
-    language: str = Form(...),
+    language: str = "hi",
     authorization: str = Header(None)
 ):
     # Check API Key
