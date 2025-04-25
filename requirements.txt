@@ -10,4 +10,6 @@ python-dotenv
 aiohttp
 cloudinary
 ffmpeg-python
+whisper==1.0.0
+
 
