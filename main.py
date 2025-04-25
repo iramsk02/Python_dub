@@ -385,14 +385,22 @@ def transcribe_audio_with_assemblyai(audio_path: str):
     headers = {'authorization': ASSEMBLYAI_API_KEY}
     
     with open(audio_path, 'rb') as f:
-        response = requests.post(upload_url, headers=headers, files={'file': f})
+        try:
+            response = requests.post(upload_url, headers=headers, files={'file': f})
+            response.raise_for_status()  # Raises HTTPError for bad responses
+        except requests.exceptions.RequestException as e:
+            print(f"Error uploading file to AssemblyAI: {e}")
+            print(f"Response: {response.text}")
+            raise HTTPException(status_code=500, detail="Failed to upload audio to AssemblyAI.")
     
-    if response.status_code != 200:
-        print("Error uploading file to AssemblyAI")
+    audio_url = response.json().get('upload_url')
+    if not audio_url:
+        print("Error: No upload URL received from AssemblyAI.")
         raise HTTPException(status_code=500, detail="Failed to upload audio to AssemblyAI.")
     
-    audio_url = response.json()['upload_url']
     print(f"Audio uploaded successfully. URL: {audio_url}")
+    # Continue with transcription...
+
 
     # Start transcription
     print("Requesting transcription from AssemblyAI...")
