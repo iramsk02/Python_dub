@@ -358,7 +358,6 @@ import aiohttp
 import cloudinary
 import cloudinary.uploader
 import requests  # Added for AssemblyAI API requests
-import time  # Importing time module to use time.sleep()
 from typing import Optional
 
 app = FastAPI()
@@ -369,7 +368,7 @@ API_KEY = os.getenv("API_KEY")
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
 CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
 CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
-ASSEMBLYAI_API_KEY = "6d11cbdcefeb450c91676898eec99e4e"  # Added for AssemblyAI API key
+ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")  # Added for AssemblyAI API key
 
 # Configure Cloudinary
 cloudinary.config(
@@ -425,7 +424,7 @@ def transcribe_audio_with_assemblyai(audio_path: str):
             raise HTTPException(status_code=500, detail="Transcription failed.")
         
         print("Transcription in progress... Retrying...")
-        time.sleep(5)  # Wait 5 seconds before retrying
+        time.sleep(5)
 
 @app.get("/")
 def root():
@@ -435,7 +434,7 @@ def root():
 async def transcribe_audio(
     file: Optional[UploadFile] = None,
     video_url: Optional[str] = Form(None),
-    language: str = "hi",
+    language: str = Form(...),
     authorization: str = Header(None)
 ):
     # Check API Key
@@ -538,4 +537,3 @@ async def transcribe_audio(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
