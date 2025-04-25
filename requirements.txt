@@ -11,4 +11,6 @@ aiohttp
 cloudinary
 ffmpeg-python
 whisper-cpp
+whispercpp @ git+https://github.com/ggerganov/whisper.cpp.git@main#egg=whispercpp
+
 
