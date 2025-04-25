@@ -9,3 +9,4 @@ gtts
 python-dotenv
 cloudinary
 ffmpeg-python
+openai-whisper
