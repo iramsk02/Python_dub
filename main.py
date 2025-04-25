@@ -433,7 +433,7 @@ def transcribe_audio_with_assemblyai(audio_path: str):
             raise HTTPException(status_code=500, detail="Transcription failed.")
         
         print("Transcription in progress... Retrying...")
-        time.sleep(5)
+        # time.sleep(5)
 
 @app.get("/")
 def root():
