@@ -346,7 +346,6 @@
 # if __name__ == "__main__":
 #     import uvicorn
 #     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
 from fastapi import FastAPI, UploadFile, Form, Header, HTTPException
 from fastapi.responses import JSONResponse
 from gtts import gTTS
@@ -359,6 +358,7 @@ import aiohttp
 import cloudinary
 import cloudinary.uploader
 import requests  # Added for AssemblyAI API requests
+import time  # Importing time module to use time.sleep()
 from typing import Optional
 
 app = FastAPI()
@@ -425,7 +425,7 @@ def transcribe_audio_with_assemblyai(audio_path: str):
             raise HTTPException(status_code=500, detail="Transcription failed.")
         
         print("Transcription in progress... Retrying...")
-        time.sleep(5)
+        time.sleep(5)  # Wait 5 seconds before retrying
 
 @app.get("/")
 def root():
@@ -538,3 +538,4 @@ async def transcribe_audio(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
