@@ -771,7 +771,7 @@ def transcribe_audio_with_assemblyai(audio_path: str):
 def root():
     return {"message": "FastAPI Server is running!"}
 
-@app.post("/translate-audio")
+@app.post("/translate")
 async def translate_audio(
     file: Optional[UploadFile] = None,
     video_url: Optional[str] = Form(None),
