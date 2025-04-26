@@ -6,3 +6,4 @@ python-dotenv
 aiohttp
 cloudinary
 requests
+python-multipart
