@@ -3,7 +3,6 @@ uvicorn
 pydantic
 python-multipart
 aiofiles
-whisper
 googletrans==4.0.0-rc1
 torch
 ffmpeg-python
