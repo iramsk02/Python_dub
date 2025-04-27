@@ -504,209 +504,10 @@
 
 
 
-# from fastapi import FastAPI, UploadFile, Form, Header, HTTPException
-# from fastapi.responses import JSONResponse
-# from gtts import gTTS
-# from googletrans import Translator
-# import tempfile
-# import os
-# import subprocess
-# from dotenv import load_dotenv
-# import aiohttp
-# import cloudinary
-# import cloudinary.uploader
-# import requests  # Added for AssemblyAI API requests
-# from typing import Optional
-# import time
-
-# app = FastAPI()
-# load_dotenv()
-
-# # Load environment variables
-# API_KEY = os.getenv("API_KEY")
-# CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
-# CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
-# CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
-# ASSEMBLYAI_API_KEY = "6d11cbdcefeb450c91676898eec99e4e"
-
-# # Configure Cloudinary
-# cloudinary.config(
-#     cloud_name=CLOUDINARY_CLOUD_NAME,
-#     api_key=CLOUDINARY_API_KEY,
-#     api_secret=CLOUDINARY_API_SECRET
-# )
-
-# # AssemblyAI Transcription Function
-# def transcribe_audio_with_assemblyai(audio_path: str):
-#     # Upload audio to AssemblyAI
-#     print("Uploading audio to AssemblyAI...")
-#     upload_url = "https://api.assemblyai.com/v2/upload"
-#     headers = {'authorization': ASSEMBLYAI_API_KEY}
-    
-#     with open(audio_path, 'rb') as f:
-#         try:
-#             response = requests.post(upload_url, headers=headers, files={'file': f})
-#             response.raise_for_status()  # Raises HTTPError for bad responses
-#         except requests.exceptions.RequestException as e:
-#             print(f"Error uploading file to AssemblyAI: {e}")
-#             raise HTTPException(status_code=500, detail="Failed to upload audio to AssemblyAI.")
-    
-#     audio_url = response.json().get('upload_url')
-#     if not audio_url:
-#         print("Error: No upload URL received from AssemblyAI.")
-#         raise HTTPException(status_code=500, detail="Failed to upload audio to AssemblyAI.")
-    
-#     print(f"Audio uploaded successfully. URL: {audio_url}")
-
-#     # Start transcription
-#     print("Requesting transcription from AssemblyAI...")
-#     transcribe_url = "https://api.assemblyai.com/v2/transcript"
-#     json_data = {"audio_url": audio_url}
-#     response = requests.post(transcribe_url, headers=headers, json=json_data)
-    
-#     if response.status_code != 200:
-#         print("Error requesting transcription from AssemblyAI")
-#         raise HTTPException(status_code=500, detail="Failed to request transcription.")
-    
-#     transcript_id = response.json()['id']
-#     print(f"Transcription request started. Transcript ID: {transcript_id}")
-
-#     # Wait for transcription to complete
-#     print("Waiting for transcription to complete...")
-#     while True:
-#         response = requests.get(f"https://api.assemblyai.com/v2/transcript/{transcript_id}", headers=headers)
-#         if response.status_code != 200:
-#             print("Error checking transcription status")
-#             raise HTTPException(status_code=500, detail="Failed to check transcription status.")
-        
-#         status = response.json()['status']
-#         if status == 'completed':
-#             print("Transcription completed.")
-#             return response.json()
-#         elif status == 'failed':
-#             print("Transcription failed.")
-#             raise HTTPException(status_code=500, detail="Transcription failed.")
-        
-#         print("Transcription in progress... Retrying...")
-#         time.sleep(5)
-
-# @app.get("/")
-# def root():
-#     return {"message": "FastAPI with AssemblyAI, Cloudinary, and Translation is running!"}
-
-# @app.post("/transcribe")
-# async def transcribe_audio(
-#     file: Optional[UploadFile] = None,
-#     video_url: Optional[str] = Form(None),
-#     language: str = Form(...),
-#     authorization: str = Header(None)
-# ):
-#     # Check API Key
-#     print("Checking API Key...")
-#     if authorization != f"Bearer {API_KEY}":
-#         print("Invalid API Key")
-#         raise HTTPException(status_code=403, detail="Invalid API key")
-
-#     video_path = wav_path = audio_path = final_video_path = None
-
-#     try:
-#         # Step 1: Receive video input (either as a file or URL)
-#         print("Receiving video input...")
-#         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_file:
-#             if file:
-#                 print("Uploading video file from client...")
-#                 temp_file.write(await file.read())
-#             elif video_url:
-#                 print(f"Downloading video from URL: {video_url}")
-#                 async with aiohttp.ClientSession() as session:
-#                     async with session.get(video_url) as resp:
-#                         if resp.status != 200:
-#                             print("Failed to fetch video from URL")
-#                             raise HTTPException(status_code=400, detail="Failed to fetch video from URL.")
-#                         temp_file.write(await resp.read())
-#             else:
-#                 print("No video input provided")
-#                 raise HTTPException(status_code=400, detail="Provide either a video file or a video URL.")
-#             video_path = temp_file.name
-#         print(f"Video saved to: {video_path}")
-
-#         # Step 2: Extract audio from video
-#         print("Extracting audio from video...")
-#         wav_path = video_path.replace(".mp4", ".wav")
-#         subprocess.run(
-#             ["ffmpeg", "-y", "-i", video_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path],
-#             check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-#         )
-#         print(f"Audio extracted to: {wav_path}")
-
-#         # Step 3: Transcribe audio with AssemblyAI
-#         print("Starting transcription using AssemblyAI...")
-#         transcription_result = transcribe_audio_with_assemblyai(wav_path)
-#         transcript = transcription_result['text']
-#         print(f"Transcription: {transcript}")
-
-#         # Step 4: Translate the transcript
-#         print(f"Translating transcript to '{language}'...")
-#         supported_languages = gTTS.langs()
-#         if language not in supported_languages:
-#             print(f"Unsupported language: {language}")
-#             raise HTTPException(status_code=400, detail=f"Language '{language}' is not supported.")
-#         translator = Translator()
-#         translated_text = translator.translate(transcript, dest=language).text
-#         print(f"Translated text: {translated_text}")
-
-#         # Step 5: Convert translated text to speech using gTTS
-#         print(f"Generating translated speech for '{language}'...")
-#         audio_path = wav_path.replace(".wav", f"_{language}.mp3")
-#         gTTS(translated_text, lang=language).save(audio_path)
-#         print(f"Translated speech saved to: {audio_path}")
-
-#         # Step 6: Combine original video with translated audio
-#         print(f"Combining video with translated audio...")
-#         final_video_path = video_path.replace(".mp4", f"_translated_{language}.mp4")
-#         subprocess.run(
-#             ["ffmpeg", "-y", "-i", video_path, "-i", audio_path, "-c:v", "copy", "-c:a", "aac", "-strict", "experimental", final_video_path],
-#             check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-#         )
-#         print(f"Video and audio combined successfully: {final_video_path}")
-
-#         # Step 7: Upload final video to Cloudinary
-#         print("Uploading final video to Cloudinary...")
-#         upload_result = cloudinary.uploader.upload_large(final_video_path, resource_type="video")
-#         cloudinary_url = upload_result.get("secure_url")
-#         print(f"Video uploaded to Cloudinary: {cloudinary_url}")
-
-#         return JSONResponse(content={
-#             "message": "Translated video created and uploaded successfully.",
-#             "transcript": transcript,
-#             "translated_text": translated_text,
-#             "cloudinary_url": cloudinary_url
-#         })
-
-#     except subprocess.CalledProcessError as e:
-#         print("FFmpeg error occurred.")
-#         raise HTTPException(status_code=500, detail=f"FFmpeg error: {e.stderr.decode()}")
-#     except Exception as e:
-#         print(f"Exception occurred: {str(e)}")
-#         raise HTTPException(status_code=500, detail=str(e))
-#     finally:
-#         # Cleanup temporary files
-#         print("Cleaning up temporary files...")
-#         for path in [video_path, wav_path, audio_path, final_video_path]:
-#             if path and os.path.exists(path):
-#                 os.remove(path)
-#                 print(f"🗑️ Deleted: {path}")
-
-# # Entry point for FastAPI app
-# if __name__ == "__main__":
-#     import uvicorn
-#     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
-
-
 from fastapi import FastAPI, UploadFile, Form, Header, HTTPException
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse
 from gtts import gTTS
+from gtts.lang import tts_langs
 from googletrans import Translator
 import tempfile
 import os
@@ -715,8 +516,9 @@ from dotenv import load_dotenv
 import aiohttp
 import cloudinary
 import cloudinary.uploader
-import requests
+import requests  # Added for AssemblyAI API requests
 from typing import Optional
+import time
 
 app = FastAPI()
 load_dotenv()
@@ -726,7 +528,7 @@ API_KEY = os.getenv("API_KEY")
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
 CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
 CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
-ASSEMBLYAI_API_KEY = "6d11cbdcefeb450c91676898eec99e4e"  # AssemblyAI API Key
+ASSEMBLYAI_API_KEY = "6d11cbdcefeb450c91676898eec99e4e"
 
 # Configure Cloudinary
 cloudinary.config(
@@ -737,131 +539,332 @@ cloudinary.config(
 
 # AssemblyAI Transcription Function
 def transcribe_audio_with_assemblyai(audio_path: str):
+    # Upload audio to AssemblyAI
     print("Uploading audio to AssemblyAI...")
     upload_url = "https://api.assemblyai.com/v2/upload"
     headers = {'authorization': ASSEMBLYAI_API_KEY}
     
     with open(audio_path, 'rb') as f:
-        response = requests.post(upload_url, headers=headers, files={'file': f})
-        response.raise_for_status()
+        try:
+            response = requests.post(upload_url, headers=headers, files={'file': f})
+            response.raise_for_status()  # Raises HTTPError for bad responses
+        except requests.exceptions.RequestException as e:
+            print(f"Error uploading file to AssemblyAI: {e}")
+            raise HTTPException(status_code=500, detail="Failed to upload audio to AssemblyAI.")
     
     audio_url = response.json().get('upload_url')
     if not audio_url:
+        print("Error: No upload URL received from AssemblyAI.")
         raise HTTPException(status_code=500, detail="Failed to upload audio to AssemblyAI.")
     
-    print("Requesting transcription...")
+    print(f"Audio uploaded successfully. URL: {audio_url}")
+
+    # Start transcription
+    print("Requesting transcription from AssemblyAI...")
     transcribe_url = "https://api.assemblyai.com/v2/transcript"
     json_data = {"audio_url": audio_url}
     response = requests.post(transcribe_url, headers=headers, json=json_data)
-    response.raise_for_status()
+    
+    if response.status_code != 200:
+        print("Error requesting transcription from AssemblyAI")
+        raise HTTPException(status_code=500, detail="Failed to request transcription.")
     
     transcript_id = response.json()['id']
-    
-    print("Waiting for transcription...")
+    print(f"Transcription request started. Transcript ID: {transcript_id}")
+
+    # Wait for transcription to complete
+    print("Waiting for transcription to complete...")
     while True:
         response = requests.get(f"https://api.assemblyai.com/v2/transcript/{transcript_id}", headers=headers)
-        response.raise_for_status()
+        if response.status_code != 200:
+            print("Error checking transcription status")
+            raise HTTPException(status_code=500, detail="Failed to check transcription status.")
+        
         status = response.json()['status']
         if status == 'completed':
+            print("Transcription completed.")
             return response.json()
         elif status == 'failed':
+            print("Transcription failed.")
             raise HTTPException(status_code=500, detail="Transcription failed.")
+        
+        print("Transcription in progress... Retrying...")
+        time.sleep(5)
 
 @app.get("/")
 def root():
-    return {"message": "FastAPI Server is running!"}
+    print("workinf /")
+    return {"message": "FastAPI with AssemblyAI, Cloudinary, and Translation is running!"}
 
-@app.post("/translate")
-async def translate_audio(
+@app.post("/transcribe")
+async def transcribe_audio(
     file: Optional[UploadFile] = None,
     video_url: Optional[str] = Form(None),
+    language: str = Form(...),
     authorization: str = Header(None)
 ):
+    # Check API Key
+    print("Checking API Key...")
     if authorization != f"Bearer {API_KEY}":
+        print("Invalid API Key")
         raise HTTPException(status_code=403, detail="Invalid API key")
 
-    video_path = wav_path = hindi_audio_path = None
+    video_path = wav_path = audio_path = final_video_path = None
 
     try:
-        print("Receiving video...")
+        # Step 1: Receive video input (either as a file or URL)
+        print("Receiving video input...")
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_file:
             if file:
+                print("Uploading video file from client...")
                 temp_file.write(await file.read())
             elif video_url:
+                print(f"Downloading video from URL: {video_url}")
                 async with aiohttp.ClientSession() as session:
                     async with session.get(video_url) as resp:
                         if resp.status != 200:
-                            raise HTTPException(status_code=400, detail="Failed to fetch video.")
+                            print("Failed to fetch video from URL")
+                            raise HTTPException(status_code=400, detail="Failed to fetch video from URL.")
                         temp_file.write(await resp.read())
             else:
-                raise HTTPException(status_code=400, detail="Provide either a file or video URL.")
+                print("No video input provided")
+                raise HTTPException(status_code=400, detail="Provide either a video file or a video URL.")
             video_path = temp_file.name
-        print(f"Video saved: {video_path}")
+        print(f"Video saved to: {video_path}")
 
-        # Step 1: Extract audio
-        print("Extracting audio...")
+        # Step 2: Extract audio from video
+        print("Extracting audio from video...")
         wav_path = video_path.replace(".mp4", ".wav")
         subprocess.run(
             ["ffmpeg", "-y", "-i", video_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path],
             check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
-        print(f"Audio extracted: {wav_path}")
+        print(f"Audio extracted to: {wav_path}")
 
-        # Step 2: Transcribe audio
-        print("Transcribing audio...")
+        # Step 3: Transcribe audio with AssemblyAI
+        print("Starting transcription using AssemblyAI...")
         transcription_result = transcribe_audio_with_assemblyai(wav_path)
         transcript = transcription_result['text']
-        print(f"Transcript: {transcript}")
+        print(f"Transcription: {transcript}")
 
-        # Step 3: Translate transcript to Hindi
-        print("Translating transcript...")
+        # Step 4: Translate the transcript
+        print(f"Translating transcript to '{language}'...")
+        # supported_languages = gTTS.langs()
+        supported_languages = tts_langs()
+        if language not in supported_languages:
+            print(f"Unsupported language: {language}")
+            raise HTTPException(status_code=400, detail=f"Language '{language}' is not supported.")
         translator = Translator()
-        translated_text = translator.translate(transcript, dest='hi').text
-        print(f"Translated Text (Hindi): {translated_text}")
+        translated_text = translator.translate(transcript, dest=language).text
+        print(f"Translated text: {translated_text}")
 
-        # Step 4: Generate Hindi audio from translated text
-        print("Generating Hindi audio...")
-        hindi_audio_path = wav_path.replace(".wav", "_hindi.mp3")
-        gTTS(translated_text, lang='hi').save(hindi_audio_path)
-        print(f"Hindi audio saved: {hindi_audio_path}")
+        # Step 5: Convert translated text to speech using gTTS
+        print(f"Generating translated speech for '{language}'...")
+        audio_path = wav_path.replace(".wav", f"_{language}.mp3")
+        gTTS(translated_text, lang=language).save(audio_path)
+        print(f"Translated speech saved to: {audio_path}")
 
-        # Step 5: Upload both original and translated audios to Cloudinary
-        print("Uploading English audio to Cloudinary...")
-        english_upload_result = cloudinary.uploader.upload_large(wav_path, resource_type="video")
-        english_audio_url = english_upload_result.get("secure_url")
-        print(f"English Audio URL: {english_audio_url}")
+        # Step 6: Combine original video with translated audio
+        # print(f"Combining video with translated audio...")
+        # final_video_path = video_path.replace(".mp4", f"_translated_{language}.mp4")
+        # subprocess.run(
+        #     ["ffmpeg", "-y", "-i", video_path, "-i", audio_path, "-c:v", "copy", "-c:a", "aac", "-strict", "experimental", final_video_path],
+        #     check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        # )
+        # print(f"Video and audio combined successfully: {final_video_path}")
 
-        print("Uploading Hindi audio to Cloudinary...")
-        hindi_upload_result = cloudinary.uploader.upload_large(hindi_audio_path, resource_type="video")
-        hindi_audio_url = hindi_upload_result.get("secure_url")
-        print(f"Hindi Audio URL: {hindi_audio_url}")
+        # Step 7: Upload final video to Cloudinary
+        # print("Uploading final video to Cloudinary...")
+        # upload_result = cloudinary.uploader.upload_large(final_video_path, resource_type="video")
+        # cloudinary_url = upload_result.get("secure_url")
+        # print(f"Video uploaded to Cloudinary: {cloudinary_url}")
 
-        # Return audio files as response
         return JSONResponse(content={
-            "message": "Audio extracted, translated, and uploaded successfully.",
-            "transcript": transcript,
-            "translated_text": translated_text,
-            "english_audio_url": english_audio_url,
-            "hindi_audio_url": hindi_audio_url,
-            "english_audio_file": FileResponse(english_audio_url),
-            "hindi_audio_file": FileResponse(hindi_audio_url)
+            "message": "Translated video created and uploaded successfully."
+            # "transcript": transcript,
+            # "translated_text": translated_text,
+            # "cloudinary_url": cloudinary_url
         })
 
     except subprocess.CalledProcessError as e:
+        print("FFmpeg error occurred.")
         raise HTTPException(status_code=500, detail=f"FFmpeg error: {e.stderr.decode()}")
     except Exception as e:
+        print(f"Exception occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
+        # Cleanup temporary files
         print("Cleaning up temporary files...")
-        for path in [video_path, wav_path, hindi_audio_path]:
+        for path in [video_path, wav_path, audio_path, final_video_path]:
             if path and os.path.exists(path):
                 os.remove(path)
                 print(f"🗑️ Deleted: {path}")
 
-# Entry point
+# Entry point for FastAPI app
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+
+
+# from fastapi import FastAPI, UploadFile, Form, Header, HTTPException
+# from fastapi.responses import JSONResponse, FileResponse
+# from gtts import gTTS
+# from googletrans import Translator
+# import tempfile
+# import os
+# import subprocess
+# from dotenv import load_dotenv
+# import aiohttp
+# import cloudinary
+# import cloudinary.uploader
+# import requests
+# from typing import Optional
+
+# app = FastAPI()
+# load_dotenv()
+
+# # Load environment variables
+# API_KEY = os.getenv("API_KEY")
+# CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
+# CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
+# CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
+# ASSEMBLYAI_API_KEY = "6d11cbdcefeb450c91676898eec99e4e"  # AssemblyAI API Key
+
+# # Configure Cloudinary
+# cloudinary.config(
+#     cloud_name=CLOUDINARY_CLOUD_NAME,
+#     api_key=CLOUDINARY_API_KEY,
+#     api_secret=CLOUDINARY_API_SECRET
+# )
+
+# # AssemblyAI Transcription Function
+# def transcribe_audio_with_assemblyai(audio_path: str):
+#     print("Uploading audio to AssemblyAI...")
+#     upload_url = "https://api.assemblyai.com/v2/upload"
+#     headers = {'authorization': ASSEMBLYAI_API_KEY}
+    
+#     with open(audio_path, 'rb') as f:
+#         response = requests.post(upload_url, headers=headers, files={'file': f})
+#         response.raise_for_status()
+    
+#     audio_url = response.json().get('upload_url')
+#     if not audio_url:
+#         raise HTTPException(status_code=500, detail="Failed to upload audio to AssemblyAI.")
+    
+#     print("Requesting transcription...")
+#     transcribe_url = "https://api.assemblyai.com/v2/transcript"
+#     json_data = {"audio_url": audio_url}
+#     response = requests.post(transcribe_url, headers=headers, json=json_data)
+#     response.raise_for_status()
+    
+#     transcript_id = response.json()['id']
+    
+#     print("Waiting for transcription...")
+#     while True:
+#         response = requests.get(f"https://api.assemblyai.com/v2/transcript/{transcript_id}", headers=headers)
+#         response.raise_for_status()
+#         status = response.json()['status']
+#         if status == 'completed':
+#             return response.json()
+#         elif status == 'failed':
+#             raise HTTPException(status_code=500, detail="Transcription failed.")
+
+# @app.get("/")
+# def root():
+#     return {"message": "FastAPI Server is running!"}
+
+# @app.post("/translate")
+# async def translate_audio(
+#     file: Optional[UploadFile] = None,
+#     video_url: Optional[str] = Form(None),
+#     authorization: str = Header(None)
+# ):
+#     if authorization != f"Bearer {API_KEY}":
+#         raise HTTPException(status_code=403, detail="Invalid API key")
+
+#     video_path = wav_path = hindi_audio_path = None
+
+#     try:
+#         print("Receiving video...")
+#         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_file:
+#             if file:
+#                 temp_file.write(await file.read())
+#             elif video_url:
+#                 async with aiohttp.ClientSession() as session:
+#                     async with session.get(video_url) as resp:
+#                         if resp.status != 200:
+#                             raise HTTPException(status_code=400, detail="Failed to fetch video.")
+#                         temp_file.write(await resp.read())
+#             else:
+#                 raise HTTPException(status_code=400, detail="Provide either a file or video URL.")
+#             video_path = temp_file.name
+#         print(f"Video saved: {video_path}")
+
+#         # Step 1: Extract audio
+#         print("Extracting audio...")
+#         wav_path = video_path.replace(".mp4", ".wav")
+#         subprocess.run(
+#             ["ffmpeg", "-y", "-i", video_path, "-ar", "16000", "-ac", "1", "-f", "wav", wav_path],
+#             check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+#         )
+#         print(f"Audio extracted: {wav_path}")
+
+#         # Step 2: Transcribe audio
+#         print("Transcribing audio...")
+#         transcription_result = transcribe_audio_with_assemblyai(wav_path)
+#         transcript = transcription_result['text']
+#         print(f"Transcript: {transcript}")
+
+#         # Step 3: Translate transcript to Hindi
+#         print("Translating transcript...")
+#         translator = Translator()
+#         translated_text = translator.translate(transcript, dest='hi').text
+#         print(f"Translated Text (Hindi): {translated_text}")
+
+#         # Step 4: Generate Hindi audio from translated text
+#         print("Generating Hindi audio...")
+#         hindi_audio_path = wav_path.replace(".wav", "_hindi.mp3")
+#         gTTS(translated_text, lang='hi').save(hindi_audio_path)
+#         print(f"Hindi audio saved: {hindi_audio_path}")
+
+#         # Step 5: Upload both original and translated audios to Cloudinary
+#         print("Uploading English audio to Cloudinary...")
+#         english_upload_result = cloudinary.uploader.upload_large(wav_path, resource_type="video")
+#         english_audio_url = english_upload_result.get("secure_url")
+#         print(f"English Audio URL: {english_audio_url}")
+
+#         print("Uploading Hindi audio to Cloudinary...")
+#         hindi_upload_result = cloudinary.uploader.upload_large(hindi_audio_path, resource_type="video")
+#         hindi_audio_url = hindi_upload_result.get("secure_url")
+#         print(f"Hindi Audio URL: {hindi_audio_url}")
+
+#         # Return audio files as response
+#         return JSONResponse(content={
+#             "message": "Audio extracted, translated, and uploaded successfully.",
+#             "transcript": transcript,
+#             "translated_text": translated_text,
+#             "english_audio_url": english_audio_url,
+#             "hindi_audio_url": hindi_audio_url,
+#             "english_audio_file": FileResponse(english_audio_url),
+#             "hindi_audio_file": FileResponse(hindi_audio_url)
+#         })
+
+#     except subprocess.CalledProcessError as e:
+#         raise HTTPException(status_code=500, detail=f"FFmpeg error: {e.stderr.decode()}")
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+#     finally:
+#         print("Cleaning up temporary files...")
+#         for path in [video_path, wav_path, hindi_audio_path]:
+#             if path and os.path.exists(path):
+#                 os.remove(path)
+#                 print(f"🗑️ Deleted: {path}")
+
+# # Entry point
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 
 
 
