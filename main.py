@@ -605,7 +605,7 @@ async def transcribe_audio(
 ):
     # Check API Key
     print("Checking API Key...")
-    if authorization != f"Bearer {API_KEY}":
+    if authorization != f"{API_KEY}":
         print("Invalid API Key")
         raise HTTPException(status_code=403, detail="Invalid API key")
 
