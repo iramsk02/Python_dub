@@ -7,3 +7,5 @@ aiohttp
 cloudinary
 requests
 python-multipart
+typing 
+
