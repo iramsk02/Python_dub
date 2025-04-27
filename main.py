@@ -598,10 +598,10 @@ def root():
 
 @app.post("/transcribe")
 async def transcribe_audio(
-    # file: Optional[UploadFile] = None,
-    # video_url: Optional[str] = Form(None),
-    # language: str = Form(...),
-    # authorization: str = Header(None)
+    file: Optional[UploadFile] = None,
+    video_url: Optional[str] = Form(None) ,
+    language="hi",
+    authorization="iram02"
 ):
     # Check API Key
     print("Checking API Key...")
